@@ -78,9 +78,9 @@ void spi_init(spi_t *obj, PinName mosi, PinName miso, PinName sclk, PinName ssel
     SPIName spi_data = (SPIName)pinmap_merge(spi_mosi, spi_miso);
     SPIName spi_cntl = (SPIName)pinmap_merge(spi_sclk, spi_ssel);
 
-    obj->module = (SPIName)pinmap_merge(spi_data, spi_cntl);
-    spi = obj->spi;
-    switch ((int)obj->module) {
+    obj->spi.module = (SPIName)pinmap_merge(spi_data, spi_cntl);
+    spi = obj->spi.spi;
+    switch ((int)obj->spi.module) {
         case SPI_0:
             TSB_CG_FSYSENA_IPENA11 = ENABLE;
             TSB_CG_FSYSENB_IPENB00 = ENABLE;
@@ -110,7 +110,7 @@ void spi_init(spi_t *obj, PinName mosi, PinName miso, PinName sclk, PinName ssel
             error("Cannot found SPI module corresponding with input pins.");
             break;
     }
-    obj->spi = spi;
+    obj->spi.spi = spi;
     // pin out the SPI pins
     pinmap_pinout(mosi, PinMap_SPI_MOSI);
     pinmap_pinout(miso, PinMap_SPI_MISO);
@@ -148,7 +148,7 @@ void spi_free(spi_t *obj)
 {
     TSB_TSPI_TypeDef* spi;
 
-    spi = obj->spi;
+    spi = obj->spi.spi;
     spi->CR0 |= TSPI_DISABLE;
     spi->CR2 = TSPI_INT_ALL;  // Disable all interrupt
 }
@@ -157,9 +157,9 @@ void spi_format(spi_t *obj, int bits, int mode, int slave)
 {
     TSB_TSPI_TypeDef* spi;
 
-    obj->bits = bits;
-    spi = obj->spi;
-    obj->bits = bits;
+    obj->spi.bits = bits;
+    spi = obj->spi.spi;
+    obj->spi.bits = bits;
     spi->CR0 |= TSPI_DISABLE;
 
     if (bits >= 8 || bits <= 32) {
@@ -177,7 +177,7 @@ void spi_frequency(spi_t *obj, int hz)
     TSB_TSPI_TypeDef* spi;
     int clk_div = 1;
     uint32_t clocks = ((SystemCoreClock / 2) / hz);
-    obj->spi->CR0 |= TSPI_DISABLE;
+    obj->spi.spi->CR0 |= TSPI_DISABLE;
 
     while (clk_div < 10) {
         if (clocks < 16) {
@@ -190,7 +190,7 @@ void spi_frequency(spi_t *obj, int hz)
     if (clk_div == 0) {
         clocks++;
     }
-    spi = obj->spi;
+    spi = obj->spi.spi;
     spi->CR0 |= TSPI_DISABLE;
     spi->BR = ((clk_div << 4) | clocks);
     spi->CR0 |= TSPI_ENABLE;
@@ -200,7 +200,7 @@ int spi_master_write(spi_t *obj, int value)
 {
     TSB_TSPI_TypeDef* spi;
     MBED_ASSERT(obj != NULL);
-    spi = obj->spi;
+    spi = obj->spi.spi;
     spi->CR3 |= TSPI_TX_BUFF_CLR_DONE; // FIFO Cear
     // Check if the TSPI is already enabled
     if((spi->CR0 & TSPI_ENABLE) != TSPI_ENABLE) {
@@ -261,7 +261,7 @@ int spi_busy(spi_t *obj)
     TSB_TSPI_TypeDef* spi;
     uint8_t result = 0;
 
-    spi = obj->spi;
+    spi = obj->spi.spi;
     if( (spi->SR & (1<<7)) || (spi->SR & (1<<23))) {
         result = 1;
     } else {
@@ -272,7 +272,7 @@ int spi_busy(spi_t *obj)
 
 uint8_t spi_get_module(spi_t *obj)
 {
-    return (uint8_t)(obj->module);
+    return (uint8_t)(obj->spi.module);
 }
 
 const PinMap *spi_master_mosi_pinmap()
